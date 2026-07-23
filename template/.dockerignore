@@ -1,0 +1,16 @@
+.copier-answers.yml
+.git
+.github
+.idea
+.venv
+.vscode
+__pycache__
+*.egg-info
+*.py[cod]
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.ty_cache
+build
+dist
+tests
