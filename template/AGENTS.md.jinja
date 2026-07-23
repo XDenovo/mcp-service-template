@@ -1,0 +1,127 @@
+# XDeNovo {{ project_name }}
+
+## Repository Role
+
+- This repository owns the `{{ project_name }}` Compute MCP Service.
+- It is a private downstream called through the XDeNovo Gateway, not a separate public MCP
+  endpoint.
+- Use the canonical
+  [Platform architecture](https://github.com/XDenovo/platform/blob/main/docs/architecture.md) and
+  [approved technology stack](https://github.com/XDenovo/platform/blob/main/docs/techstack.md) as
+  supplemental platform-wide context.
+
+## Architecture and Security Guardrails
+
+- Accept only the short-lived internal credential issued by Gateway. Never accept, store, log, or
+  forward an external access token.
+- Own this service's database Schema, Job and Artifact metadata, object-storage namespace,
+  Temporal Namespace, and Task Queue. Do not access another service's resources.
+- Keep resource ownership checks in this service even after runtime authentication establishes a
+  caller identity.
+- Submit long-running work through durable Workflows and execute it in Workers or isolated
+  Compute Job containers, not inside an MCP request.
+- Keep service-specific Tools, scientific dependencies, domain logic, migrations, Workflows, and
+  Activities here. Move infrastructure genuinely shared by all services into `mcp-runtime`.
+- Keep credentials, JWTs, database passwords, object-storage secrets, and presigned URLs out of
+  logs and exception text.
+
+## Toolchain and Setup
+
+- Python {{ python_version }} and uv {{ uv_version }}.
+- FastMCP for the MCP service layer, Ruff for linting and formatting, ty for type checking, and
+  prek for Git hooks.
+- `pyproject.toml` and `uv.lock` own dependency state.
+
+```bash
+uv sync --locked
+```
+
+Inside an initialized Git checkout, install the configured hooks:
+
+```bash
+uv run prek install
+```
+
+Use uv for dependency changes and commit both `pyproject.toml` and `uv.lock`:
+
+```bash
+uv add <package>
+uv add --dev <package>
+uv remove <package>
+uv lock
+```
+
+TODO: After the first consumable `mcp-runtime` tag is published, add it as a tag-pinned Git
+dependency and document the upgrade procedure.
+
+## Development Conventions
+
+- Keep MCP handlers thin and separate transport, authorization, domain logic, persistence,
+  Workflow submission, and Artifact handling.
+- Derive database, storage, and Temporal boundaries from service configuration rather than
+  accepting arbitrary identifiers for another service.
+- Keep sync and async operations explicit and avoid blocking the FastMCP event loop.
+- Give database engines, external clients, streams, Workers, and task containers explicit
+  lifecycle and cleanup paths.
+- Use `mcp-runtime` observability conventions once the shared runtime dependency is available.
+
+TODO: When Server, Worker, and configuration scaffolds are added, document exact environment,
+local startup, Worker startup, and shutdown commands.
+
+## Testing and Validation
+
+Run the same checks as generated CI:
+
+```bash
+uv sync --locked
+uv run --no-sync ruff check .
+uv run --no-sync ruff format --check .
+uv run --no-sync ty check
+uv build
+```
+
+Focused static checks:
+
+```bash
+uv run --no-sync ruff check <changed-path>
+uv run --no-sync ruff format --check <changed-path>
+```
+
+TODO: When the pytest scaffold is added, document full, focused, integration, and coverage
+commands; test locations and naming; fixtures; and required external services.
+
+## Build and Deployment
+
+Build the package and container with:
+
+```bash
+uv build
+docker build -t {{ project_name }} .
+```
+
+Production composition, private networking, secrets delivery, and operational runbooks belong to
+`XDenovo/platform-deploy`.
+
+TODO: When service ports, readiness, and liveness contracts are implemented, document their local
+and container smoke-test commands.
+
+## Copier Updates
+
+Commit current service changes before applying a template update:
+
+```bash
+uvx --from copier==9.17.0 copier update --trust
+```
+
+Review the resulting merge and preserve service-specific code. Do not edit `.copier-answers.yml`
+manually.
+
+## Git and Pull Requests
+
+- Treat the Issue as the implementation specification and the PR as the result report.
+- Follow Conventional Commits.
+- Use the XDenovo organization-default Issue and PR templates.
+- Preserve unrelated working-tree changes, and stage only the explicit paths intended for a
+  commit.
+- Changes to Tool contracts, Job or Artifact schemas, Workflow inputs, or configuration are
+  compatibility changes and require corresponding tests and migration notes.

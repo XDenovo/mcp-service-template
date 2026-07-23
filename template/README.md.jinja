@@ -1,0 +1,43 @@
+# {{ project_name }}
+
+{{ description }}
+
+## 环境要求
+
+- Python {{ python_version }}
+- uv {{ uv_version }}
+
+## 初始化
+
+```bash
+uv sync --locked
+uv run prek install
+```
+
+## 质量检查
+
+```bash
+uv run --no-sync ruff check .
+uv run --no-sync ruff format --check .
+uv run --no-sync ty check
+uv build
+```
+
+## Docker
+
+先生成锁文件，再构建镜像：
+
+```bash
+uv lock
+docker build -t {{ project_name }} .
+```
+
+模板只提供容器运行骨架。实现服务入口后，可在 `Dockerfile` 中补充端口、健康检查及最终启动参数。
+
+## 同步模板更新
+
+提交当前修改后运行：
+
+```bash
+uvx --from copier==9.17.0 copier update --trust
+```
