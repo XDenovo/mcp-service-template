@@ -1,0 +1,38 @@
+[project]
+name = "{{ project_name }}"
+version = "0.1.0"
+description = {{ description | tojson }}
+readme = "README.md"
+authors = [
+    { name = "XDenovo" },
+]
+requires-python = ">={{ python_version }},<{{ python_next_version }}"
+dependencies = [
+    "fastmcp[apps]>={{ fastmcp_version }},<4",
+]
+
+[build-system]
+requires = ["uv_build>={{ uv_build_version }},<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "prek=={{ prek_version }}",
+    "ruff=={{ ruff_version }}",
+    "ty=={{ ty_version }}",
+]
+
+[tool.uv]
+required-version = "=={{ uv_version }}"
+
+[tool.ruff]
+target-version = "{{ ruff_python_target }}"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "RUF", "SIM", "UP"]
+
+[tool.ruff.format]
+indent-style = "space"
+line-ending = "lf"
+quote-style = "double"
