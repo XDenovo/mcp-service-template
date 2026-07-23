@@ -1,0 +1,6 @@
+.DS_Store
+.ruff_cache/
+__pycache__/
+
+# Linked worktrees created for issue-scoped development
+/.worktrees/
