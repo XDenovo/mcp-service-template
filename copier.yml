@@ -1,0 +1,83 @@
+_min_copier_version: "9.17.0"
+_subdirectory: template
+_message_after_copy: |
+  {{ project_name }} 已创建。
+
+  接下来在生成目录中运行：
+    uv sync --locked
+    uv run prek install
+_tasks:
+  - command:
+      - uvx
+      - --from
+      - "uv=={{ uv_version }}"
+      - uv
+      - lock
+
+project_name:
+  type: str
+  help: Repository 和 Python distribution 名称
+  placeholder: example-service
+  validator: >-
+    {% if not (project_name | regex_search('^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$')) %}
+    必须以小写字母开头，只能包含小写字母、数字和单个连字符，且不能以连字符结尾
+    {% endif %}
+
+package_name:
+  type: str
+  default: "{{ project_name | replace('-', '_') }}"
+  when: false
+
+description:
+  type: str
+  default: XDenovo internal MCP service
+
+python_version:
+  type: str
+  default: "3.13"
+  when: false
+
+python_next_version:
+  type: str
+  default: "3.14"
+  when: false
+
+python_image:
+  type: str
+  default: "3.13.14-slim-bookworm"
+  when: false
+
+ruff_python_target:
+  type: str
+  default: "py313"
+  when: false
+
+uv_version:
+  type: str
+  default: "0.11.30"
+  when: false
+
+uv_build_version:
+  type: str
+  default: "0.11.30"
+  when: false
+
+fastmcp_version:
+  type: str
+  default: "3.4.4"
+  when: false
+
+prek_version:
+  type: str
+  default: "0.4.10"
+  when: false
+
+ruff_version:
+  type: str
+  default: "0.15.22"
+  when: false
+
+ty_version:
+  type: str
+  default: "0.0.61"
+  when: false
