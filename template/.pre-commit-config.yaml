@@ -16,3 +16,8 @@ repos:
         entry: uv run --frozen ty check
         language: system
         pass_filenames: false
+      - id: pytest
+        name: pytest
+        entry: uv run --frozen pytest
+        language: system
+        pass_filenames: false

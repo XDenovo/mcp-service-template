@@ -28,8 +28,8 @@
 ## Toolchain and Setup
 
 - Python {{ python_version }} and uv {{ uv_version }}.
-- FastMCP for the MCP service layer, Ruff for linting and formatting, ty for type checking, and
-  prek for Git hooks.
+- `mcp-runtime` {{ mcp_runtime_version }} and FastMCP for the authenticated MCP service layer,
+  pytest for tests, Ruff for linting and formatting, ty for type checking, and prek for Git hooks.
 - `pyproject.toml` and `uv.lock` own dependency state.
 
 ```bash
@@ -51,8 +51,28 @@ uv remove <package>
 uv lock
 ```
 
-TODO: After the first consumable `mcp-runtime` tag is published, add it as a tag-pinned Git
-dependency and document the upgrade procedure.
+`mcp-runtime` is a direct Git dependency pinned to the released
+`{{ mcp_runtime_version }}` tag. The lockfile must resolve that tag to an immutable commit. To
+upgrade, change only to another released tag, run
+`uv lock --upgrade-package mcp-runtime`, execute the full validation matrix including Docker, and
+commit `pyproject.toml` with `uv.lock`. Never use `main`, a branch, a local path, or an unreleased
+commit as the final dependency.
+
+## Service Assembly and Configuration
+
+- `{{ package_name }}.service.create_service(settings, *, jwks_transport=None)` is the
+  side-effect-free production assembly seam. Keep `jwks_transport` limited to tests; do not add
+  arbitrary Runtime or FastMCP keyword forwarding.
+- Importing the package, `service`, or `__main__` must not read environment, validate deployment
+  settings, open clients, or start the Server.
+- `python -m {{ package_name }}` constructs `RuntimeSettings` with the generated service ID
+  `{{ project_name }}`, assembles the service, and calls `run_server()`. Do not make
+  `MCP_RUNTIME_SERVICE_ID` able to override this identity.
+- Startup requires `MCP_RUNTIME_AUTH__ISSUER` and `MCP_RUNTIME_AUTH__JWKS_URL`. Runtime does not
+  automatically load `.env` files.
+- Loopback defaults to `127.0.0.1:8000`. A non-loopback deployment must explicitly provide both
+  `MCP_RUNTIME_SERVER__HOST` and a non-wildcard JSON
+  `MCP_RUNTIME_SERVER__ALLOWED_HOSTS`; deployment hostnames do not belong in this repository.
 
 ## Development Conventions
 
@@ -63,10 +83,8 @@ dependency and document the upgrade procedure.
 - Keep sync and async operations explicit and avoid blocking the FastMCP event loop.
 - Give database engines, external clients, streams, Workers, and task containers explicit
   lifecycle and cleanup paths.
-- Use `mcp-runtime` observability conventions once the shared runtime dependency is available.
-
-TODO: When Server, Worker, and configuration scaffolds are added, document exact environment,
-local startup, Worker startup, and shutdown commands.
+- Use `mcp-runtime` configuration, authentication, Server, lifecycle, and observability
+  foundations rather than copying them here.
 
 ## Testing and Validation
 
@@ -77,6 +95,7 @@ uv sync --locked
 uv run --no-sync ruff check .
 uv run --no-sync ruff format --check .
 uv run --no-sync ty check
+uv run --no-sync pytest
 uv build
 ```
 
@@ -87,8 +106,23 @@ uv run --no-sync ruff check <changed-path>
 uv run --no-sync ruff format --check <changed-path>
 ```
 
-TODO: When the pytest scaffold is added, document full, focused, integration, and coverage
-commands; test locations and naming; fixtures; and required external services.
+Focused tests:
+
+```bash
+uv run --no-sync pytest tests/unit
+uv run --no-sync pytest tests/integration
+uv run --no-sync pytest tests/integration/test_authentication.py
+```
+
+- Put configuration-free imports and process assembly behavior in `tests/unit`.
+- Put authenticated Bearer/Streamable HTTP behavior in `tests/integration`.
+- Keep fixtures function-scoped and each async client inside an explicit `async with` cleanup
+  boundary.
+- Use only the public `mcp_runtime.testing` credential factory, client, and rejection assertion.
+  Do not copy JWT/RSA/JWKS helpers, inspect private keys, parse SDK `ExceptionGroup` internals, or
+  use an authentication-bypassing in-memory Server transport.
+- Tests do not need a live Gateway or open a network port. Do not establish an arbitrary global
+  coverage threshold for service-specific scientific code.
 
 ## Build and Deployment
 
@@ -99,11 +133,23 @@ uv build
 docker build -t {{ project_name }} .
 ```
 
+Local startup:
+
+```bash
+MCP_RUNTIME_AUTH__ISSUER=https://api.xdenovoai.com/ \
+MCP_RUNTIME_AUTH__JWKS_URL=http://gateway.internal/.well-known/jwks.json \
+uv run python -m {{ package_name }}
+```
+
+The container command already runs this module. Container deployment must inject authentication
+and non-loopback Server settings at runtime; the image must remain neutral to production
+hostnames, networking, and Secrets.
+
 Production composition, private networking, secrets delivery, and operational runbooks belong to
 `XDenovo/platform-deploy`.
 
-TODO: When service ports, readiness, and liveness contracts are implemented, document their local
-and container smoke-test commands.
+Readiness/liveness contracts and Docker runtime smoke testing are not established by this
+scaffold.
 
 ## Copier Updates
 

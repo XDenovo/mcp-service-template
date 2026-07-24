@@ -2,10 +2,15 @@
 
 {{ description }}
 
+这是一个由 XDeNovo Compute MCP Service 模板生成的私有下游服务。当前入口组装
+`mcp-runtime` 提供的 authenticated stateful Streamable HTTP Server；Tool 和 Resource
+catalog 初始为空，由本仓库后续添加服务特有行为。
+
 ## 环境要求
 
 - Python {{ python_version }}
 - uv {{ uv_version }}
+- mcp-runtime {{ mcp_runtime_version }}（Git tag；`uv.lock` 固定其解析 commit）
 
 ## 初始化
 
@@ -14,25 +19,101 @@ uv sync --locked
 uv run prek install
 ```
 
+## 运行配置
+
+服务启动必须提供 Gateway 的内部凭证验证设置：
+
+| 环境变量 | 必填 | 说明 |
+|---|---|---|
+| `MCP_RUNTIME_AUTH__ISSUER` | 是 | Gateway 内部凭证的稳定 HTTPS issuer，必须精确匹配 |
+| `MCP_RUNTIME_AUTH__JWKS_URL` | 是 | Runtime 获取 Gateway 公钥的绝对 HTTP/HTTPS JWKS URL |
+| `MCP_RUNTIME_SERVER__HOST` | 否 | 监听地址；默认 `127.0.0.1` |
+| `MCP_RUNTIME_SERVER__PORT` | 否 | 监听端口；默认 `8000` |
+| `MCP_RUNTIME_SERVER__ALLOWED_HOSTS` | 非 loopback 时是 | JSON Host allowlist；禁止空列表和通配符 |
+
+服务 ID 固定为生成时的 `{{ project_name }}`，JWT audience 固定为
+`urn:xdenovo:mcp-service:{{ project_name }}`。即使进程环境设置
+`MCP_RUNTIME_SERVICE_ID`，也不能改变该身份或资源边界。
+
+Runtime 不会自动加载 `.env`、YAML 或 JSON 文件。部署系统应显式注入环境变量；若本地
+开发需要 `.env`，必须由服务代码明确选择并评审该配置来源。
+
+本地 loopback 启动只需要认证设置：
+
+```bash
+export MCP_RUNTIME_AUTH__ISSUER=https://api.xdenovoai.com/
+export MCP_RUNTIME_AUTH__JWKS_URL=http://gateway.internal/.well-known/jwks.json
+uv run python -m {{ package_name }}
+```
+
+非 loopback 部署必须同时显式提供监听地址和无通配符的 Host allowlist：
+
+```bash
+export MCP_RUNTIME_SERVER__HOST=0.0.0.0
+export MCP_RUNTIME_SERVER__ALLOWED_HOSTS='["service.internal.example"]'
+```
+
+allowlist 必须与 Gateway 实际发送的 `Host` 一致。模板和镜像不内置部署环境的 hostname。
+
 ## 质量检查
 
 ```bash
 uv run --no-sync ruff check .
 uv run --no-sync ruff format --check .
 uv run --no-sync ty check
+uv run --no-sync pytest
 uv build
 ```
 
-## Docker
-
-先生成锁文件，再构建镜像：
+聚焦测试：
 
 ```bash
-uv lock
+uv run --no-sync pytest tests/unit
+uv run --no-sync pytest tests/integration
+uv run --no-sync pytest tests/integration/test_authentication.py
+```
+
+Unit tests 验证配置无关的 import 和固定服务身份；integration tests 使用
+`mcp_runtime.testing` 经真实 Bearer middleware 与 stateful Streamable HTTP Session
+验证本服务凭证、缺失凭证和跨服务凭证。测试不需要 live Gateway 或网络端口。模板不设置
+组织级覆盖率百分比。
+
+## Docker
+
+Copier 已用 uv {{ uv_version }} 生成 `uv.lock`。镜像构建读取 `pyproject.toml`、
+`uv.lock`、`README.md` 和 `src/`，不需要运行时 issuer、JWKS 或 Server 设置：
+
+```bash
 docker build -t {{ project_name }} .
 ```
 
-模板只提供容器运行骨架。实现服务入口后，可在 `Dockerfile` 中补充端口、健康检查及最终启动参数。
+容器内运行是非 loopback 部署时，必须在运行阶段显式注入 Host 和 allowlist。例如：
+
+```bash
+docker run --rm \
+  -e MCP_RUNTIME_AUTH__ISSUER=https://api.xdenovoai.com/ \
+  -e MCP_RUNTIME_AUTH__JWKS_URL=http://gateway.internal/.well-known/jwks.json \
+  -e MCP_RUNTIME_SERVER__HOST=0.0.0.0 \
+  -e 'MCP_RUNTIME_SERVER__ALLOWED_HOSTS=["service.internal.example"]' \
+  -p 127.0.0.1:8000:8000 \
+  {{ project_name }}
+```
+
+Production 网络、hostname、Secret 和端口发布由部署仓库负责；不要把 wildcard 或环境
+hostname 写入镜像。
+
+## 更新 mcp-runtime
+
+`pyproject.toml` 的 direct Git dependency 固定已发布 tag
+`{{ mcp_runtime_version }}`，`uv.lock` 记录该 tag 解析到的 immutable commit。升级时：
+
+1. 将 `pyproject.toml` 中的 tag 改为已发布的新 tag；
+2. 运行 `uv lock --upgrade-package mcp-runtime`；
+3. 执行完整质量检查和 Docker build；
+4. 一并提交 `pyproject.toml` 与 `uv.lock`。
+
+不要依赖 `main`、branch、local path 或未发布 commit。模板更新带来的 runtime 版本变更也应
+按同一流程审查解析 commit。
 
 ## 同步模板更新
 
@@ -41,3 +122,6 @@ docker build -t {{ project_name }} .
 ```bash
 uvx --from copier==9.17.0 copier update --trust
 ```
+
+检查 Copier merge，保留本服务的 Tool、domain code 和其他 downstream 修改，并阅读目标模板
+release notes 中的迁移说明。
