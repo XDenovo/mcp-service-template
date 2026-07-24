@@ -19,8 +19,14 @@ project_name:
   help: Repository 和 Python distribution 名称
   placeholder: example-service
   validator: >-
-    {% if project_name | length > 63 or not (project_name | regex_search('^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$')) %}
-    必须是最多 63 个字符的 lowercase DNS label：以小写字母开头，只能包含小写字母、数字和单个连字符，且不能以连字符结尾
+    {% set python_keywords = [
+      'and', 'as', 'assert', 'async', 'await', 'break', 'class', 'continue',
+      'def', 'del', 'elif', 'else', 'except', 'finally', 'for', 'from',
+      'global', 'if', 'import', 'in', 'is', 'lambda', 'nonlocal', 'not',
+      'or', 'pass', 'raise', 'return', 'try', 'while', 'with', 'yield'
+    ] %}
+    {% if project_name | length > 63 or project_name in python_keywords or not (project_name | regex_search('^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$')) %}
+    必须是最多 63 个字符的 lowercase DNS label，且不能是 Python 关键字：以小写字母开头，只能包含小写字母、数字和单个连字符，且不能以连字符结尾
     {% endif %}
 
 package_name:
