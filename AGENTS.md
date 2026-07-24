@@ -66,6 +66,7 @@ Validate the rendered service with the same commands as its CI:
   uvx --from uv==0.11.30 uv run --no-sync ruff check .
   uvx --from uv==0.11.30 uv run --no-sync ruff format --check .
   uvx --from uv==0.11.30 uv run --no-sync ty check
+  uvx --from uv==0.11.30 uv run --no-sync pytest
   uvx --from uv==0.11.30 uv build
 )
 ```
@@ -82,13 +83,16 @@ When Docker inputs change, also build the rendered image:
 Review rendered `AGENTS.md`, `README.md`, `pyproject.toml`, `uv.lock`, Dockerfile, CI, and Copier
 answers when their source templates change.
 
-TODO: When automated template tests are added, document the exact fresh-copy and
-released-template-to-local-update scenarios and replace the manual matrix above where practical.
+The generated pytest suites are part of the fresh-copy matrix. Before changing an update-sensitive
+path, also render the latest released template, add representative downstream changes, run
+`copier update --trust` against the local candidate, and inspect the merge. Keep this update
+scenario manual until the repository owns an automated fixture that preserves the same evidence.
 
 ## Version Management
 
-`copier.yml` currently centralizes Python, the Python image, uv, `uv_build`, FastMCP, prek, Ruff,
-and ty versions. A version change must keep these rendered surfaces aligned:
+`copier.yml` currently centralizes Python, the Python image, uv, `uv_build`, FastMCP, httpx,
+`mcp-runtime`, prek, pytest, pytest-asyncio, Ruff, and ty versions. A version change must keep
+these rendered surfaces aligned:
 
 - `.python-version`;
 - `pyproject.toml` and `uv.lock`;
@@ -99,15 +103,27 @@ and ty versions. A version change must keep these rendered surfaces aligned:
 Do not update a generated lockfile by hand. Render a fresh service and let the configured Copier
 task resolve it.
 
-TODO: When the template release process is established, document its versioning, tag, release,
-and Copier update-compatibility policy here.
+## Releases and Copier Compatibility
+
+- Release tags and GitHub Releases use `vMAJOR.MINOR.PATCH`. The first consumable release is
+  `v0.1.0`.
+- A patch release fixes the template without intentionally changing the generated service
+  contract. A minor release adds a backward-compatible generated capability or default. A major
+  release may require downstream source or deployment migration.
+- Validate a fresh default render, its Docker image, and an update from the latest release before
+  tagging the exact validated commit. Release notes must list rendered paths that change and any
+  manual migration needed by existing generated repositories.
+- Generated repositories consume a released template ref and keep their Copier answers. They
+  commit local work before `copier update --trust`, review Copier's merge, preserve
+  service-specific code, and apply any release-note migration. Template releases do not promise
+  conflict-free updates across arbitrary downstream edits.
 
 ## Generated-Service Contract
 
 - Generated repositories use Python 3.13, uv, Ruff, ty, prek, GitHub Actions, and a non-root
   multi-stage Docker image.
-- The generated package and container are intentionally skeletal until a service implements its
-  Server, Worker, configuration, and health contract.
+- The generated package and container assemble an authenticated private MCP Server with an empty
+  Tool catalog. Workers, health contracts, and service-specific behavior remain downstream work.
 - Changes to generated commands must update the README, `AGENTS.md.jinja`, CI, and hook
   configuration together.
 - Changes to generated structure must consider both new copies and updates of repositories that

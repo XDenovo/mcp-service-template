@@ -19,8 +19,8 @@ project_name:
   help: Repository 和 Python distribution 名称
   placeholder: example-service
   validator: >-
-    {% if not (project_name | regex_search('^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$')) %}
-    必须以小写字母开头，只能包含小写字母、数字和单个连字符，且不能以连字符结尾
+    {% if project_name | length > 63 or not (project_name | regex_search('^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$')) %}
+    必须是最多 63 个字符的 lowercase DNS label：以小写字母开头，只能包含小写字母、数字和单个连字符，且不能以连字符结尾
     {% endif %}
 
 package_name:
@@ -67,9 +67,29 @@ fastmcp_version:
   default: "3.4.4"
   when: false
 
+httpx_version:
+  type: str
+  default: "0.28.1"
+  when: false
+
+mcp_runtime_version:
+  type: str
+  default: "v0.2.0"
+  when: false
+
 prek_version:
   type: str
   default: "0.4.10"
+  when: false
+
+pytest_version:
+  type: str
+  default: "9.1.1"
+  when: false
+
+pytest_asyncio_version:
+  type: str
+  default: "1.4.0"
   when: false
 
 ruff_version:

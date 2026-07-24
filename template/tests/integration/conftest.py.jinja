@@ -1,0 +1,23 @@
+from __future__ import annotations
+
+import pytest
+from mcp_runtime import InternalAuthSettings, RuntimeSettings
+from mcp_runtime.testing import InternalCredentialFactory
+
+
+@pytest.fixture
+def runtime_settings() -> RuntimeSettings:
+    return RuntimeSettings(
+        service_id="{{ project_name }}",
+        auth=InternalAuthSettings(
+            issuer="https://gateway.example.test/",
+            jwks_url="https://gateway.example.test/.well-known/jwks.json",
+        ),
+    )
+
+
+@pytest.fixture
+def credentials(
+    runtime_settings: RuntimeSettings,
+) -> InternalCredentialFactory:
+    return InternalCredentialFactory(runtime_settings)

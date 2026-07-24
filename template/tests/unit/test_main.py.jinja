@@ -1,0 +1,48 @@
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+from fastmcp import FastMCP
+from mcp_runtime import RuntimeSettings
+
+from {{ package_name }} import __main__ as process
+
+
+def test_main_keeps_generated_service_identity_when_environment_disagrees(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    environment_service_id = (
+        "other-service" if "{{ project_name }}" != "other-service" else "different-service"
+    )
+    monkeypatch.setenv("MCP_RUNTIME_SERVICE_ID", environment_service_id)
+    monkeypatch.setenv(
+        "MCP_RUNTIME_AUTH__ISSUER",
+        "https://gateway.example.test/",
+    )
+    monkeypatch.setenv(
+        "MCP_RUNTIME_AUTH__JWKS_URL",
+        "https://gateway.example.test/.well-known/jwks.json",
+    )
+    calls: list[tuple[FastMCP[Any], RuntimeSettings]] = []
+
+    def record_run_server(
+        service: FastMCP[Any],
+        settings: RuntimeSettings,
+    ) -> None:
+        calls.append((service, settings))
+
+    monkeypatch.setattr(process, "run_server", record_run_server, raising=False)
+
+    process.main()
+
+    service, settings = calls[0]
+    assert (
+        settings.service_id,
+        settings.audience,
+        service.name,
+    ) == (
+        "{{ project_name }}",
+        "urn:xdenovo:mcp-service:{{ project_name }}",
+        "{{ project_name }}",
+    )

@@ -1,0 +1,60 @@
+from __future__ import annotations
+
+from mcp_runtime import RuntimeSettings
+from mcp_runtime.testing import (
+    InternalCredentialFactory,
+    assert_authentication_rejected,
+    streamable_http_client,
+)
+
+from {{ package_name }}.service import create_service
+
+
+async def test_canonical_credential_can_list_empty_tool_catalog(
+    runtime_settings: RuntimeSettings,
+    credentials: InternalCredentialFactory,
+) -> None:
+    service = create_service(
+        runtime_settings,
+        jwks_transport=credentials.jwks_transport,
+    )
+    credential = credentials.issue(subject="user_01J2ABCDEF")
+
+    async with streamable_http_client(
+        service,
+        credential=credential,
+    ) as client:
+        tools = await client.list_tools()
+
+    assert tools == []
+
+
+async def test_missing_credential_is_rejected(
+    runtime_settings: RuntimeSettings,
+    credentials: InternalCredentialFactory,
+) -> None:
+    service = create_service(
+        runtime_settings,
+        jwks_transport=credentials.jwks_transport,
+    )
+
+    await assert_authentication_rejected(streamable_http_client(service))
+
+
+async def test_credential_for_another_service_is_rejected(
+    runtime_settings: RuntimeSettings,
+    credentials: InternalCredentialFactory,
+) -> None:
+    service = create_service(
+        runtime_settings,
+        jwks_transport=credentials.jwks_transport,
+    )
+    other_service_id = (
+        "other-service" if runtime_settings.service_id != "other-service" else "different-service"
+    )
+    credential = credentials.issue(
+        subject="user_01J2ABCDEF",
+        target_service_id=other_service_id,
+    )
+
+    await assert_authentication_rejected(streamable_http_client(service, credential=credential))

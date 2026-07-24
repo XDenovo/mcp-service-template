@@ -1,0 +1,20 @@
+"""Process entry point for the generated service."""
+
+from __future__ import annotations
+
+from mcp_runtime import RuntimeSettings, run_server
+
+from {{ package_name }}.service import create_service
+
+_SERVICE_ID = "{{ project_name }}"
+
+
+def main() -> None:
+    """Load deployment settings and run the authenticated private service."""
+    settings = RuntimeSettings(service_id=_SERVICE_ID)
+    service = create_service(settings)
+    run_server(service, settings)
+
+
+if __name__ == "__main__":
+    main()
