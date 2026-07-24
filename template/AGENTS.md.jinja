@@ -5,6 +5,8 @@
 - This repository owns the `{{ project_name }}` Compute MCP Service.
 - It is a private downstream called through the XDeNovo Gateway, not a separate public MCP
   endpoint.
+- It was created from a one-time scaffold and independently owns all subsequent dependency, CI,
+  Docker, documentation, and service-code maintenance.
 - Use the canonical
   [Platform architecture](https://github.com/XDenovo/platform/blob/main/docs/architecture.md) and
   [approved technology stack](https://github.com/XDenovo/platform/blob/main/docs/techstack.md) as
@@ -27,10 +29,11 @@
 
 ## Toolchain and Setup
 
-- Python {{ python_version }} and uv {{ uv_version }}.
-- `mcp-runtime` {{ mcp_runtime_version }} and FastMCP for the authenticated MCP service layer,
-  pytest for tests, Ruff for linting and formatting, ty for type checking, and prek for Git hooks.
-- `pyproject.toml` and `uv.lock` own dependency state.
+- Python 3.13 and uv 0.11.30.
+- `mcp-runtime` and FastMCP provide the authenticated MCP service layer; pytest runs tests, Ruff
+  handles linting and formatting, ty handles type checking, and prek manages Git hooks.
+- `pyproject.toml` owns tested dependency compatibility ranges; `uv.lock` owns exact resolved
+  dependency state.
 
 ```bash
 uv sync --locked
@@ -51,9 +54,8 @@ uv remove <package>
 uv lock
 ```
 
-`mcp-runtime` is a direct Git dependency pinned to the released
-`{{ mcp_runtime_version }}` tag. The lockfile must resolve that tag to an immutable commit. To
-upgrade, change only to another released tag, run
+`mcp-runtime` is a direct Git dependency pinned to a released tag. The lockfile must resolve that
+tag to an immutable commit. To upgrade, change only to another released tag, run
 `uv lock --upgrade-package mcp-runtime`, execute the full validation matrix including Docker, and
 commit `pyproject.toml` with `uv.lock`. Never use `main`, a branch, a local path, or an unreleased
 commit as the final dependency.
@@ -150,17 +152,6 @@ Production composition, private networking, secrets delivery, and operational ru
 
 Readiness/liveness contracts and Docker runtime smoke testing are not established by this
 scaffold.
-
-## Copier Updates
-
-Commit current service changes before applying a template update:
-
-```bash
-uvx --from copier==9.17.0 copier update --trust
-```
-
-Review the resulting merge and preserve service-specific code. Do not edit `.copier-answers.yml`
-manually.
 
 ## Git and Pull Requests
 

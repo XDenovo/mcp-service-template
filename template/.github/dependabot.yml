@@ -22,6 +22,8 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    ignore:
+      - dependency-name: ghcr.io/astral-sh/uv
     groups:
       docker-images:
         patterns:

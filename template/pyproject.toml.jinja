@@ -6,34 +6,33 @@ readme = "README.md"
 authors = [
     { name = "XDenovo" },
 ]
-requires-python = ">={{ python_version }},<{{ python_next_version }}"
+requires-python = ">=3.13,<3.14"
 dependencies = [
-    "fastmcp[apps]>={{ fastmcp_version }},<4",
-    "httpx>={{ httpx_version }},<1",
-    "mcp-runtime @ git+https://github.com/XDenovo/mcp-runtime.git@{{ mcp_runtime_version }}",
+    "fastmcp[apps]>=3.4.4,<4",
+    "httpx>=0.28.1,<1",
+    "mcp-runtime @ git+https://github.com/XDenovo/mcp-runtime.git@v0.2.0",
 ]
 
 [build-system]
-requires = ["uv_build>={{ uv_build_version }},<0.12.0"]
+requires = ["uv_build>=0.11.30,<0.12.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "prek=={{ prek_version }}",
-    "pytest=={{ pytest_version }}",
-    "pytest-asyncio=={{ pytest_asyncio_version }}",
-    "ruff=={{ ruff_version }}",
-    "ty=={{ ty_version }}",
+    "prek>=0.4.10,<0.5",
+    "pytest>=9.1.1,<10",
+    "pytest-asyncio>=1.4.0,<2",
+    "ruff>=0.15.22,<0.16",
+    "ty>=0.0.61,<0.1",
 ]
 
 [tool.uv]
-required-version = "=={{ uv_version }}"
+required-version = "==0.11.30"
 
 [tool.pytest]
-minversion = "{{ pytest_version }}"
 addopts = ["-ra", "--import-mode=importlib"]
 testpaths = ["tests"]
-required_plugins = ["pytest-asyncio=={{ pytest_asyncio_version }}"]
+required_plugins = ["pytest-asyncio"]
 strict = true
 filterwarnings = ["error"]
 asyncio_mode = "auto"
@@ -41,7 +40,7 @@ asyncio_default_fixture_loop_scope = "function"
 asyncio_default_test_loop_scope = "function"
 
 [tool.ruff]
-target-version = "{{ ruff_python_target }}"
+target-version = "py313"
 line-length = 100
 
 [tool.ruff.lint]

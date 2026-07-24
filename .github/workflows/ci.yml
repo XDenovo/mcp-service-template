@@ -1,0 +1,90 @@
+name: Fresh render
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fresh-render-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fresh-render:
+    name: Fresh render
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.30"
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Validate Copier question surface
+        run: |
+          uv run --no-project --with copier==9.17.0 python - <<'PY'
+          from pathlib import Path
+
+          import yaml
+
+          config = yaml.safe_load(Path("copier.yml").read_text())
+          questions = [key for key in config if not key.startswith("_")]
+          assert questions == ["project_name", "package_name", "description"]
+          assert config["package_name"]["when"] is False
+          PY
+
+      - name: Render representative service
+        run: |
+          uvx --from copier==9.17.0 copier copy \
+            --trust \
+            --vcs-ref=HEAD \
+            --defaults \
+            --data project_name=example-service \
+            . "${{ runner.temp }}/example-service"
+
+      - name: Validate rendered lifecycle contract
+        working-directory: ${{ runner.temp }}/example-service
+        run: |
+          test ! -e .copier-answers.yml
+          test "$(cat .python-version)" = "3.13"
+          grep -F 'requires-python = ">=3.13,<3.14"' pyproject.toml
+          grep -F 'required-version = "==0.11.30"' pyproject.toml
+          grep -Eq 'rev=v0\.2\.0#[0-9a-f]{40}' uv.lock
+
+      - name: Install dependencies
+        working-directory: ${{ runner.temp }}/example-service
+        run: uv sync --locked
+
+      - name: Lint
+        working-directory: ${{ runner.temp }}/example-service
+        run: uv run --no-sync ruff check .
+
+      - name: Check formatting
+        working-directory: ${{ runner.temp }}/example-service
+        run: uv run --no-sync ruff format --check .
+
+      - name: Type check
+        working-directory: ${{ runner.temp }}/example-service
+        run: uv run --no-sync ty check
+
+      - name: Test
+        working-directory: ${{ runner.temp }}/example-service
+        run: uv run --no-sync pytest
+
+      - name: Build package
+        working-directory: ${{ runner.temp }}/example-service
+        run: uv build
+
+      - name: Build Docker image
+        working-directory: ${{ runner.temp }}/example-service
+        run: docker build -t example-service-template-check .

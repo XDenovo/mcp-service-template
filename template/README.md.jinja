@@ -4,13 +4,15 @@
 
 这是一个由 XDeNovo Compute MCP Service 模板生成的私有下游服务。当前入口组装
 `mcp-runtime` 提供的 authenticated stateful Streamable HTTP Server；Tool 和 Resource
-catalog 初始为空，由本仓库后续添加服务特有行为。
+catalog 初始为空，由本仓库后续添加服务特有行为。本仓库是独立项目，并完整拥有后续依赖、
+CI、Docker、文档和服务代码维护。
 
 ## 环境要求
 
-- Python {{ python_version }}
-- uv {{ uv_version }}
-- mcp-runtime {{ mcp_runtime_version }}（Git tag；`uv.lock` 固定其解析 commit）
+- Python 3.13
+- uv 0.11.30
+
+`pyproject.toml` 是直接依赖兼容范围的权威来源，`uv.lock` 是当前精确解析状态的权威来源。
 
 ## 初始化
 
@@ -80,7 +82,7 @@ Unit tests 验证配置无关的 import 和固定服务身份；integration test
 
 ## Docker
 
-Copier 已用 uv {{ uv_version }} 生成 `uv.lock`。镜像构建读取 `pyproject.toml`、
+项目生成时已用 uv 0.11.30 创建 `uv.lock`。镜像构建读取 `pyproject.toml`、
 `uv.lock`、`README.md` 和 `src/`，不需要运行时 issuer、JWKS 或 Server 设置：
 
 ```bash
@@ -104,24 +106,13 @@ hostname 写入镜像。
 
 ## 更新 mcp-runtime
 
-`pyproject.toml` 的 direct Git dependency 固定已发布 tag
-`{{ mcp_runtime_version }}`，`uv.lock` 记录该 tag 解析到的 immutable commit。升级时：
+`pyproject.toml` 的 direct Git dependency 固定已发布 tag，`uv.lock` 记录该 tag
+解析到的 immutable commit。升级时：
 
 1. 将 `pyproject.toml` 中的 tag 改为已发布的新 tag；
 2. 运行 `uv lock --upgrade-package mcp-runtime`；
 3. 执行完整质量检查和 Docker build；
 4. 一并提交 `pyproject.toml` 与 `uv.lock`。
 
-不要依赖 `main`、branch、local path 或未发布 commit。模板更新带来的 runtime 版本变更也应
-按同一流程审查解析 commit。
-
-## 同步模板更新
-
-提交当前修改后运行：
-
-```bash
-uvx --from copier==9.17.0 copier update --trust
-```
-
-检查 Copier merge，保留本服务的 Tool、domain code 和其他 downstream 修改，并阅读目标模板
-release notes 中的迁移说明。
+不要依赖 `main`、branch、local path 或未发布 commit。所有后续升级都由本仓库直接修改并
+验证；生成它的脚手架不会同步未来更改。
